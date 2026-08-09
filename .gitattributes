@@ -1,0 +1,20 @@
+# Normalize line endings so contributors on different platforms don't
+# produce whole-file diffs. Text files are stored LF in the repository and
+# checked out with the platform's native ending.
+* text=auto
+
+*.ts   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.sql  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.db   binary
