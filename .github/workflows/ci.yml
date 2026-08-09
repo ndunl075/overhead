@@ -34,3 +34,11 @@ jobs:
 
       - name: Type-check
         run: npm run typecheck
+
+      - name: Build package
+        run: npm run build
+
+      - name: Smoke-test packaged CLI
+        run: |
+          tarball=$(npm pack --silent)
+          npm exec --yes --package="./$tarball" -- overhead --help

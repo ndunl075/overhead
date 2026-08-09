@@ -1,16 +1,18 @@
 {
   "name": "overhead-ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Token cost attribution across a monorepo — attribute AI API spend to directories, packages, and teams.",
   "type": "module",
   "bin": {
-    "overhead": "./src/cli.ts"
+    "overhead": "dist/cli.js"
   },
   "engines": {
     "node": ">=22.18"
   },
   "scripts": {
     "overhead": "node --no-warnings src/cli.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
     "test": "node --no-warnings --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -35,7 +37,7 @@
   },
   "homepage": "https://github.com/ndunl075/overhead#readme",
   "files": [
-    "src",
+    "dist",
     "README.md",
     "ARCHITECTURE.md",
     "LICENSE"

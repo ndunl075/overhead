@@ -1,4 +1,5 @@
 node_modules/
+dist/
 .overhead/
 overhead-report.html
 *.log

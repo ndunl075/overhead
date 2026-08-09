@@ -49,13 +49,13 @@ overhead report --by model     # is Opus doing work Haiku could?
 
 ## Install
 
-Requires **Node 22.18+**. No build step, no native dependencies — TypeScript runs directly via Node's type stripping, and storage is the built-in `node:sqlite`.
+Requires **Node 22.18+**. The published package ships compiled JavaScript and uses the built-in `node:sqlite`, so it has no runtime dependencies or native build step.
 
 ```bash
-git clone https://github.com/ndunl075/overhead && cd overhead
-npm install          # dev-only: typescript + @types/node
-npm link             # optional, puts `overhead` on your PATH
+npm install --global overhead-ai
 ```
+
+For source development, clone the repository and run `npm install`; `npm link` optionally puts `overhead` on your PATH.
 
 ## Use
 
