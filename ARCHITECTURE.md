@@ -41,6 +41,7 @@ collect → normalize → price → attribute → rollup → store → report
 | Source | Gives | Status |
 |---|---|---|
 | `~/.claude/projects/<slug>/*.jsonl` | per-turn usage + model + tool calls w/ file paths + `cwd` + `gitBranch` + sidechains | **v1** |
+| `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | per-response usage + model settings + native/custom tool calls + `cwd` + branch | **v1** |
 | Anthropic Admin API usage/cost report | authoritative org totals by API key / workspace | v2 (reconcile) |
 | OTel metrics export | same usage, fleet-wide, no local files | v2 |
 
@@ -57,6 +58,13 @@ Transcript schema facts (verified against real files):
 
 `cache_creation` splits 5m vs 1h — **they price differently (1.25× vs 2×)**. Do not use the flat `cache_creation_input_tokens`.
 
+Codex rollout facts verified against real files:
+
+- `event_msg/token_count.info.last_token_usage` is the per-response usage; `total_token_usage` is cumulative and is used only as a replay-dedupe key.
+- `cached_input_tokens` and `cache_write_input_tokens` are included inside `input_tokens`, so both are subtracted before mapping the remaining fresh input.
+- `response_item/function_call` and `custom_tool_call` records precede the `token_count` event they belong to. Codex's `exec` custom call wraps nested tools in JavaScript, so the collector extracts structured paths, patch headers, and conservative command/prose paths from that wrapper.
+- Main and auto-review rollouts can share a logical session id. The unique rollout filename keys storage so one stream cannot replace the other.
+
 ## 4. Cost model
 
 ```
@@ -71,6 +79,10 @@ Per-MTok list prices (`src/pricing/models.ts`, dated + overridable):
 
 | Model | In | Out |
 |---|---|---|
+| `gpt-5.6-sol` / `gpt-5.6` | 5 | 30 |
+| `gpt-5.6-terra` | 2.5 | 15 |
+| `gpt-5.6-luna` | 1 | 6 |
+| GPT-5.6 @ Priority processing | 2× standard | 2× standard |
 | `claude-fable-5`, `claude-mythos-5` | 10 | 50 |
 | `claude-opus-5`, `claude-opus-4-8/4-7/4-6` | 5 | 25 |
 | `claude-opus-5` @ `speed:fast` | 10 | 50 |
@@ -133,6 +145,8 @@ So the two concerns are separated:
 | touches | **merged across every line sharing the id** |
 
 Same for `usage.iterations`: it is a per-attempt breakdown that re-states the same totals, so summing it double counts. Read the top-level fields only.
+
+Codex has the analogous replay hazard when a thread resumes: it may emit the previous cumulative `total_token_usage` snapshot again. The collector deduplicates that snapshot while always pricing `last_token_usage`; this avoids billing a previous response twice.
 
 ### 5.6 Declared vs inferred evidence
 
@@ -211,4 +225,4 @@ overhead config   init
 
 ## 11. Non-goals (v1)
 
-Real-time interception. Per-developer surveillance framing — units are code, not people. Non-Anthropic providers. Prompt content storage (paths and token counts only; no message bodies leave the machine).
+Real-time interception. Per-developer surveillance framing — units are code, not people. Prompt content storage (paths and token counts only; no message bodies leave the machine).

@@ -77,6 +77,25 @@ test("fast mode is priced at the premium rate", () => {
   assert.equal(fast, 50);
 });
 
+test("prices the OpenAI GPT-5.6 family and Priority processing", () => {
+  const standard = priceTurn(
+    "gpt-5.6-sol",
+    usage({ input: 1_000_000, output: 1_000_000 }),
+  );
+  const priority = priceTurn(
+    "gpt-5.6-sol",
+    usage({ input: 1_000_000, output: 1_000_000 }),
+    { fast: true },
+  );
+  assert.equal(standard.priced, true);
+  assert.equal(standard.costUsd, 35);
+  assert.equal(priority.costUsd, 70);
+  assert.deepEqual(lookupPrice("openai.gpt-5.6-terra"), {
+    input: 2.5,
+    output: 15,
+  });
+});
+
 test("batch requests are halved", () => {
   const std = priceTurn("claude-opus-5", usage({ input: 1_000_000 })).costUsd;
   const batch = priceTurn("claude-opus-5", usage({ input: 1_000_000 }), {

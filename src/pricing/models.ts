@@ -1,16 +1,21 @@
 import type { ModelPrice } from "../types.ts";
 
 /**
- * Anthropic list prices, USD per million tokens.
- * Source: platform.claude.com pricing, captured 2026-06-24.
+ * Provider list prices, USD per million tokens.
+ * Sources: platform.claude.com and developers.openai.com, captured 2026-08-08.
  *
- * These are first-party API rates. They also apply to Microsoft Foundry.
- * Bedrock and Vertex are partner-operated with separate pricing — override
- * via `overhead.config.json` -> `prices` if you bill through those.
+ * These are first-party API rates. Partner deployments and negotiated plans
+ * can differ — override via `overhead.config.json` -> `prices` when needed.
  */
-export const PRICE_TABLE_VERSION = "2026-06-24";
+export const PRICE_TABLE_VERSION = "2026-08-08";
 
 export const PRICES: Record<string, ModelPrice> = {
+  // OpenAI GPT-5.6 family
+  "gpt-5.6-sol": { input: 5, output: 30 },
+  "gpt-5.6": { input: 5, output: 30 },
+  "gpt-5.6-terra": { input: 2.5, output: 15 },
+  "gpt-5.6-luna": { input: 1, output: 6 },
+
   // Fable / Mythos tier
   "claude-fable-5": { input: 10, output: 50 },
   "claude-mythos-5": { input: 10, output: 50 },
@@ -40,10 +45,17 @@ export const PRICES: Record<string, ModelPrice> = {
 };
 
 /**
- * Fast mode runs the same model at premium pricing. The transcript reports
- * `usage.speed`, so we key the surcharge separately rather than forking ids.
+ * Premium processing for the same model: Claude Code exposes Fast mode as
+ * `usage.speed`; Codex exposes OpenAI Priority as `service_tier`. Both select
+ * this table without forking the model id.
  */
 export const FAST_MODE_PRICES: Record<string, ModelPrice> = {
+  // OpenAI Priority processing
+  "gpt-5.6-sol": { input: 10, output: 60 },
+  "gpt-5.6": { input: 10, output: 60 },
+  "gpt-5.6-terra": { input: 5, output: 30 },
+  "gpt-5.6-luna": { input: 2, output: 12 },
+
   "claude-opus-5": { input: 10, output: 50 },
   "claude-opus-4-8": { input: 10, output: 50 },
 };
@@ -68,7 +80,7 @@ export function lookupPrice(
   model: string,
   opts: { fast?: boolean; at?: Date; overrides?: Record<string, ModelPrice> } = {},
 ): ModelPrice | null {
-  const id = model.replace(/^anthropic\./, "");
+  const id = model.replace(/^(?:anthropic|openai)\./, "");
   const table = opts.fast ? { ...PRICES, ...FAST_MODE_PRICES } : PRICES;
   const merged = { ...table, ...(opts.overrides ?? {}) };
 

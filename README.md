@@ -52,7 +52,7 @@ overhead report --by model     # is Opus doing work Haiku could?
 Requires **Node 22.18+**. No build step, no native dependencies — TypeScript runs directly via Node's type stripping, and storage is the built-in `node:sqlite`.
 
 ```bash
-git clone https://github.com/you/overhead && cd overhead
+git clone https://github.com/ndunl075/overhead && cd overhead
 npm install          # dev-only: typescript + @types/node
 npm link             # optional, puts `overhead` on your PATH
 ```
@@ -67,7 +67,7 @@ overhead report --by package
 overhead html -o spend.html      # shareable single-file report
 ```
 
-Nothing leaves your machine. Overhead reads local transcripts and stores **paths and token counts only** — never message content.
+Nothing leaves your machine. Overhead reads Claude Code (`~/.claude/projects`) and Codex (`~/.codex/sessions`) transcripts, then stores **paths and token counts only** — never message content.
 
 ### Reconcile against the real invoice
 
@@ -120,7 +120,9 @@ Every input-side token category is a multiple of the model's input rate:
 | Cache write, 1-hour TTL | **2.00×** |
 | Cache read | 0.10× |
 
-The 5m/1h split matters. Agent harnesses lean on the 1-hour TTL, so collapsing the two — or using the flat `cache_creation_input_tokens` field — materially understates long-session cost. Overhead reads the split.
+The 5m/1h split matters for Claude Code. Agent harnesses lean on the 1-hour TTL, so collapsing the two — or using the flat `cache_creation_input_tokens` field — materially understates long-session cost. Codex records a single cache-write category plus cached reads; Overhead splits both out of `input_tokens` before pricing so they are not double counted.
+
+Built-in OpenAI rates cover the GPT-5.6 Sol, Terra, and Luna family, including Priority processing. Codex's internal `codex-auto-review` model has no public list price, so those turns are deliberately surfaced as unpriced unless you provide an override.
 
 Unknown model IDs are priced at zero **and reported as unpriced**, so a new model release shows up as a visible gap rather than a silently shrinking bill. Override any rate in `overhead.config.json` if you're on partner or negotiated pricing.
 
@@ -163,7 +165,7 @@ Full design rationale, data model, and pipeline detail: [`ARCHITECTURE.md`](./AR
 
 ## Status
 
-v1 reads Claude Code transcripts. Planned: Anthropic Admin API adapter for automatic reconciliation, and OTel ingest for fleet-wide collection without touching individual machines.
+v1 reads Claude Code and Codex transcripts. Planned: provider billing API adapters for automatic reconciliation, and OTel ingest for fleet-wide collection without touching individual machines.
 
 ## License
 

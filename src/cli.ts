@@ -10,6 +10,7 @@ import { PRICE_TABLE_VERSION } from "./pricing/models.ts";
 import type { Report, ReportGroupBy, Rollup } from "./types.ts";
 
 import { collectClaudeCode } from "./collect/claude-code.ts";
+import { collectCodex } from "./collect/codex.ts";
 import { recomputeAttributions } from "./attribute/engine.ts";
 import { detectPackages } from "./rollup/workspace.ts";
 import { makeCodeownersRollup } from "./rollup/codeowners.ts";
@@ -186,16 +187,30 @@ async function main(argv: string[]): Promise<number> {
     if (command === "scan") {
       if (!values.reattribute) {
         const t0 = Date.now();
-        const { sessions, stats } = collectClaudeCode({
+        const claude = collectClaudeCode({
           since: since ?? undefined,
           repoRoot,
           onlyThisRepo: !values["all-projects"],
           priceOpts: { overrides: cfg.prices },
         });
+        const codex = collectCodex({
+          since: since ?? undefined,
+          repoRoot,
+          onlyThisRepo: !values["all-projects"],
+          priceOpts: { overrides: cfg.prices },
+        });
+        const sessions = [...claude.sessions, ...codex.sessions];
+        const stats = {
+          turns: claude.stats.turns + codex.stats.turns,
+          sessions: claude.stats.sessions + codex.stats.sessions,
+          files: claude.stats.files + codex.stats.files,
+          linesSkipped: claude.stats.linesSkipped + codex.stats.linesSkipped,
+        };
         for (const s of sessions) store.putSession(s);
         console.log(
           `Ingested ${stats.turns} turns across ${stats.sessions} sessions ` +
             `from ${stats.files} transcripts (${Date.now() - t0}ms)` +
+            `\n  Claude Code: ${claude.stats.turns} turns; Codex: ${codex.stats.turns} turns` +
             (stats.linesSkipped
               ? `\n  ${stats.linesSkipped} malformed lines skipped`
               : ""),
