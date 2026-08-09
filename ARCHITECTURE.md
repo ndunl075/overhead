@@ -217,20 +217,20 @@ overhead html     [-o overhead-report.html]
 overhead config   init
 ```
 
-## 10. Build order
+## 10. Implementation status and build order
 
-| # | Deliverable | Depends on |
-|---|---|---|
-| 1 | types, schema, db | — |
-| 2 | pricing + cost engine | 1 |
-| 3 | transcript collector + path extraction | 1 |
-| 4 | attribution engine | 1,2,3 |
-| 5 | rollup (workspace + CODEOWNERS) | 1 |
-| 6 | CLI + table report | all |
-| 7 | HTML report | 6 |
-| 8 | reconcile (manual `--actual`) | 6 |
-| 9 | billing adapters (Anthropic Admin API) | 8 |
-| 10 | OTel ingest (fleet-wide collection) | 3,6 |
+| # | Deliverable | Depends on | Status |
+|---|---|---|---|
+| 1 | types, schema, db | — | Shipped in v0.1 |
+| 2 | pricing + cost engine | 1 | Shipped in v0.1 |
+| 3 | transcript collector + path extraction | 1 | Shipped in v0.1 |
+| 4 | attribution engine | 1,2,3 | Shipped in v0.1 |
+| 5 | rollup (workspace + CODEOWNERS) | 1 | Shipped in v0.1 |
+| 6 | CLI + table report | all | Shipped in v0.1 |
+| 7 | HTML report | 6 | Shipped in v0.1 |
+| 8 | manual reconcile via `--actual` | 6 | Shipped in v0.1 |
+| 9 | Anthropic Admin API billing adapter | 8 | Shipped in v0.2 |
+| 10 | OTel ingest for fleet-wide collection | 3,6 | Shipped in v0.2 |
 
 ## 11. Non-goals (v1)
 

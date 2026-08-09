@@ -182,7 +182,7 @@ Full design rationale, data model, and pipeline detail: [`ARCHITECTURE.md`](./AR
 
 ## Status
 
-v1 reads Claude Code and Codex transcripts and supports manual invoice reconcile. v2 adds Anthropic Admin API billing adapters for automatic reconciliation, and OTel ingest for fleet-wide collection without touching individual machines.
+v0.1 shipped Claude Code and Codex transcript ingestion plus manual invoice reconciliation. v0.2 shipped the Anthropic Admin API billing adapter and OTel ingest for fleet-wide collection without touching individual machines.
 
 ## License
 
