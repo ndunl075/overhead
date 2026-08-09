@@ -1,0 +1,39 @@
+{
+  "name": "overhead",
+  "version": "0.1.0",
+  "description": "Token cost attribution across a monorepo — attribute AI API spend to directories, packages, and teams.",
+  "type": "module",
+  "bin": {
+    "overhead": "./src/cli.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "overhead": "node --no-warnings src/cli.ts",
+    "test": "node --no-warnings --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "llm",
+    "cost",
+    "attribution",
+    "monorepo",
+    "finops",
+    "anthropic",
+    "claude",
+    "observability"
+  ],
+  "author": "Nicolas Dunlap",
+  "license": "MIT",
+  "files": [
+    "src",
+    "README.md",
+    "ARCHITECTURE.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
