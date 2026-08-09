@@ -53,8 +53,20 @@ export function priceTurn(
     usage.cacheWrite1h * CACHE_WRITE_1H_MULTIPLIER +
     usage.cacheRead * CACHE_READ_MULTIPLIER;
 
+  const rawInputTokens =
+    usage.input +
+    usage.cacheWrite5m +
+    usage.cacheWrite1h +
+    usage.cacheRead;
+  const longContext =
+    price.longContext && rawInputTokens > price.longContext.threshold
+      ? price.longContext
+      : null;
+  const inputRate = price.input * (longContext?.inputMultiplier ?? 1);
+  const outputRate = price.output * (longContext?.outputMultiplier ?? 1);
+
   let cost =
-    (inputUnits * price.input + usage.output * price.output) / 1_000_000;
+    (inputUnits * inputRate + usage.output * outputRate) / 1_000_000;
 
   if (opts.batch) cost *= BATCH_MULTIPLIER;
 

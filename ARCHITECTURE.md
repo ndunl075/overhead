@@ -83,6 +83,7 @@ Per-MTok list prices (`src/pricing/models.ts`, dated + overridable):
 | `gpt-5.6-terra` | 2.5 | 15 |
 | `gpt-5.6-luna` | 1 | 6 |
 | GPT-5.6 @ Priority processing | 2× standard | 2× standard |
+| GPT-5.6 with >272K input tokens | 2× standard input | 1.5× standard output |
 | `claude-fable-5`, `claude-mythos-5` | 10 | 50 |
 | `claude-opus-5`, `claude-opus-4-8/4-7/4-6` | 5 | 25 |
 | `claude-opus-5` @ `speed:fast` | 10 | 50 |

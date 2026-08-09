@@ -102,6 +102,12 @@ export interface ModelPrice {
   output: number;
   /** Optional promotional pricing that expires on a date (ISO yyyy-mm-dd). */
   intro?: { input: number; output: number; until: string };
+  /** Optional whole-request premium once raw input exceeds a token threshold. */
+  longContext?: {
+    threshold: number;
+    inputMultiplier: number;
+    outputMultiplier: number;
+  };
 }
 
 export const CACHE_WRITE_5M_MULTIPLIER = 1.25;

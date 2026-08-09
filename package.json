@@ -1,5 +1,5 @@
 {
-  "name": "overhead",
+  "name": "overhead-ai",
   "version": "0.1.0",
   "description": "Token cost attribution across a monorepo — attribute AI API spend to directories, packages, and teams.",
   "type": "module",
@@ -26,6 +26,14 @@
   ],
   "author": "Nicolas Dunlap",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ndunl075/overhead.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ndunl075/overhead/issues"
+  },
+  "homepage": "https://github.com/ndunl075/overhead#readme",
   "files": [
     "src",
     "README.md",

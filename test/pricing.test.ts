@@ -80,20 +80,63 @@ test("fast mode is priced at the premium rate", () => {
 test("prices the OpenAI GPT-5.6 family and Priority processing", () => {
   const standard = priceTurn(
     "gpt-5.6-sol",
-    usage({ input: 1_000_000, output: 1_000_000 }),
+    usage({ input: 100_000, output: 1_000_000 }),
   );
   const priority = priceTurn(
     "gpt-5.6-sol",
-    usage({ input: 1_000_000, output: 1_000_000 }),
+    usage({ input: 100_000, output: 1_000_000 }),
     { fast: true },
   );
   assert.equal(standard.priced, true);
-  assert.equal(standard.costUsd, 35);
-  assert.equal(priority.costUsd, 70);
+  assert.equal(standard.costUsd, 30.5);
+  assert.equal(priority.costUsd, 61);
   assert.deepEqual(lookupPrice("openai.gpt-5.6-terra"), {
     input: 2.5,
     output: 15,
+    longContext: {
+      threshold: 272_000,
+      inputMultiplier: 2,
+      outputMultiplier: 1.5,
+    },
   });
+});
+
+test("GPT-5.6 long-context premium starts above 272K raw input", () => {
+  const atBoundary = priceTurn(
+    "gpt-5.6-sol",
+    usage({ input: 272_000, output: 1_000_000 }),
+  );
+  const aboveBoundary = priceTurn(
+    "gpt-5.6-sol",
+    usage({ input: 272_001, output: 1_000_000 }),
+  );
+
+  assert.equal(atBoundary.costUsd, (272_000 * 5 + 1_000_000 * 30) / 1_000_000);
+  assert.equal(
+    aboveBoundary.costUsd,
+    (272_001 * 5 * 2 + 1_000_000 * 30 * 1.5) / 1_000_000,
+  );
+});
+
+test("cached tokens count toward the GPT-5.6 long-context threshold", () => {
+  const { costUsd } = priceTurn(
+    "gpt-5.6-luna",
+    usage({ input: 1, cacheRead: 272_000, output: 1_000_000 }),
+  );
+  const inputUnits = 1 + 272_000 * 0.1;
+  assert.equal(costUsd, (inputUnits * 1 * 2 + 1_000_000 * 6 * 1.5) / 1_000_000);
+});
+
+test("long-context premium composes with Priority processing", () => {
+  const { costUsd } = priceTurn(
+    "gpt-5.6-sol",
+    usage({ input: 272_001, output: 1_000_000 }),
+    { fast: true },
+  );
+  assert.equal(
+    costUsd,
+    (272_001 * 10 * 2 + 1_000_000 * 60 * 1.5) / 1_000_000,
+  );
 });
 
 test("batch requests are halved", () => {

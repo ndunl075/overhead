@@ -11,10 +11,26 @@ export const PRICE_TABLE_VERSION = "2026-08-08";
 
 export const PRICES: Record<string, ModelPrice> = {
   // OpenAI GPT-5.6 family
-  "gpt-5.6-sol": { input: 5, output: 30 },
-  "gpt-5.6": { input: 5, output: 30 },
-  "gpt-5.6-terra": { input: 2.5, output: 15 },
-  "gpt-5.6-luna": { input: 1, output: 6 },
+  "gpt-5.6-sol": {
+    input: 5,
+    output: 30,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
+  "gpt-5.6": {
+    input: 5,
+    output: 30,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
+  "gpt-5.6-terra": {
+    input: 2.5,
+    output: 15,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
+  "gpt-5.6-luna": {
+    input: 1,
+    output: 6,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
 
   // Fable / Mythos tier
   "claude-fable-5": { input: 10, output: 50 },
@@ -51,10 +67,26 @@ export const PRICES: Record<string, ModelPrice> = {
  */
 export const FAST_MODE_PRICES: Record<string, ModelPrice> = {
   // OpenAI Priority processing
-  "gpt-5.6-sol": { input: 10, output: 60 },
-  "gpt-5.6": { input: 10, output: 60 },
-  "gpt-5.6-terra": { input: 5, output: 30 },
-  "gpt-5.6-luna": { input: 2, output: 12 },
+  "gpt-5.6-sol": {
+    input: 10,
+    output: 60,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
+  "gpt-5.6": {
+    input: 10,
+    output: 60,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
+  "gpt-5.6-terra": {
+    input: 5,
+    output: 30,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
+  "gpt-5.6-luna": {
+    input: 2,
+    output: 12,
+    longContext: { threshold: 272_000, inputMultiplier: 2, outputMultiplier: 1.5 },
+  },
 
   "claude-opus-5": { input: 10, output: 50 },
   "claude-opus-4-8": { input: 10, output: 50 },
@@ -99,8 +131,16 @@ export function lookupPrice(
     const now = opts.at ?? new Date();
     // `until` is an inclusive last day; compare against end-of-day UTC.
     if (now <= new Date(`${entry.intro.until}T23:59:59.999Z`)) {
-      return { input: entry.intro.input, output: entry.intro.output };
+      return {
+        input: entry.intro.input,
+        output: entry.intro.output,
+        ...(entry.longContext ? { longContext: entry.longContext } : {}),
+      };
     }
   }
-  return { input: entry.input, output: entry.output };
+  return {
+    input: entry.input,
+    output: entry.output,
+    ...(entry.longContext ? { longContext: entry.longContext } : {}),
+  };
 }

@@ -122,7 +122,7 @@ Every input-side token category is a multiple of the model's input rate:
 
 The 5m/1h split matters for Claude Code. Agent harnesses lean on the 1-hour TTL, so collapsing the two — or using the flat `cache_creation_input_tokens` field — materially understates long-session cost. Codex records a single cache-write category plus cached reads; Overhead splits both out of `input_tokens` before pricing so they are not double counted.
 
-Built-in OpenAI rates cover the GPT-5.6 Sol, Terra, and Luna family, including Priority processing. Codex's internal `codex-auto-review` model has no public list price, so those turns are deliberately surfaced as unpriced unless you provide an override.
+Built-in OpenAI rates cover the GPT-5.6 Sol, Terra, and Luna family, including Priority processing and the whole-request premium above 272K input tokens. Codex's internal `codex-auto-review` model has no public list price, so those turns are deliberately surfaced as unpriced unless you provide an override.
 
 Unknown model IDs are priced at zero **and reported as unpriced**, so a new model release shows up as a visible gap rather than a silently shrinking bill. Override any rate in `overhead.config.json` if you're on partner or negotiated pricing.
 
