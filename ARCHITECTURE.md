@@ -28,7 +28,7 @@ collect → normalize → price → attribute → rollup → store → report
 
 | Stage | In | Out | Module |
 |---|---|---|---|
-| collect | JSONL transcripts, (v2) OTel, Admin API | raw events | `src/collect/` |
+| collect | JSONL transcripts, OTel exports, Admin API (invoice) | raw events / invoice totals | `src/collect/`, `src/billing/` |
 | normalize | raw events | `Turn[]`, `Touch[]` | `src/collect/` |
 | price | Turn.usage + model | `cost_usd` | `src/pricing/` |
 | attribute | Turn + Touch history | `(turn, path, share)` | `src/attribute/` |
@@ -42,8 +42,8 @@ collect → normalize → price → attribute → rollup → store → report
 |---|---|---|
 | `~/.claude/projects/<slug>/*.jsonl` | per-turn usage + model + tool calls w/ file paths + `cwd` + `gitBranch` + sidechains | **v1** |
 | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | per-response usage + model settings + native/custom tool calls + `cwd` + branch | **v1** |
-| Anthropic Admin API usage/cost report | authoritative org totals by API key / workspace | v2 (reconcile) |
-| OTel metrics export | same usage, fleet-wide, no local files | v2 |
+| Anthropic Admin API usage/cost report | authoritative org totals by API key / workspace | **v2** (billing adapter) |
+| OTel metrics/events/traces export | same usage, fleet-wide, no local files | **v2** |
 
 Transcript schema facts (verified against real files):
 
@@ -185,6 +185,11 @@ scale = invoiced_total / local_total
 
 Report shows both `modeled` and `reconciled` columns plus `coverage = local_total / invoiced_total`. Low coverage means transcripts are missing — say so loudly rather than presenting a confident wrong number.
 
+Invoice totals arrive two ways:
+
+1. **Manual** — `overhead reconcile --actual <usd> [--period YYYY-MM]`
+2. **Billing adapter** — `overhead reconcile --from anthropic --period YYYY-MM` pulls `/v1/organizations/cost_report` with an Admin API key (`ANTHROPIC_ADMIN_API_KEY`). Amounts are cents-as-decimal-strings; the adapter converts to USD and pages through the month.
+
 ## 8. Storage
 
 SQLite (`node:sqlite`, no native deps). Idempotent ingest keyed on message id.
@@ -203,9 +208,10 @@ meta(key, value)          -- config hash, lambda, window, price table version
 ## 9. CLI
 
 ```
-overhead scan     [--since 30d] [--repo .] [--all-projects]
+overhead scan     [--since 30d] [--repo .] [--all-projects] [--otel <path>] [--otel-only]
 overhead report   [--by dir|package|team|file|model|session] [--depth 2] [--since 7d] [--top 20]
 overhead reconcile --actual 12345.67 [--period 2026-07]
+overhead reconcile --from anthropic --period 2026-07 [--api-key …]
 overhead export   [--format json|csv]
 overhead html     [-o overhead-report.html]
 overhead config   init
@@ -222,7 +228,9 @@ overhead config   init
 | 5 | rollup (workspace + CODEOWNERS) | 1 |
 | 6 | CLI + table report | all |
 | 7 | HTML report | 6 |
-| 8 | reconcile (Admin API adapter) | 6 |
+| 8 | reconcile (manual `--actual`) | 6 |
+| 9 | billing adapters (Anthropic Admin API) | 8 |
+| 10 | OTel ingest (fleet-wide collection) | 3,6 |
 
 ## 11. Non-goals (v1)
 

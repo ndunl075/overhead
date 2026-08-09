@@ -11,6 +11,8 @@ import type { Report, ReportGroupBy, Rollup } from "./types.ts";
 
 import { collectClaudeCode } from "./collect/claude-code.ts";
 import { collectCodex } from "./collect/codex.ts";
+import { collectOtel } from "./collect/otel.ts";
+import { getBillingAdapter, periodFromMonth } from "./billing/index.ts";
 import { recomputeAttributions } from "./attribute/engine.ts";
 import { detectPackages } from "./rollup/workspace.ts";
 import { makeCodeownersRollup } from "./rollup/codeowners.ts";
@@ -45,6 +47,8 @@ COMMON OPTIONS
 scan
   --all-projects        Scan every project's transcripts, not just this repo
   --reattribute         Recompute attribution from stored evidence only (no re-read)
+  --otel <path>         Also ingest OTLP JSON/NDJSON exports (file or directory)
+  --otel-only           Skip local Claude Code / Codex transcripts
 
 report
   --by <kind>           dir | package | team | feature | file | model | session
@@ -54,8 +58,10 @@ report
   --no-color
 
 reconcile
-  --actual <usd>        The invoiced total for the period
-  --period <YYYY-MM>    Restrict to a calendar month
+  --actual <usd>        The invoiced total for the period (manual)
+  --from <provider>     Fetch the invoice via a billing API (currently: anthropic)
+  --api-key <key>       Admin API key (else ANTHROPIC_ADMIN_API_KEY)
+  --period <YYYY-MM>    Restrict to a calendar month (required with --from)
 
 export
   --format json|csv     (default: json)
@@ -153,6 +159,10 @@ async function main(argv: string[]): Promise<number> {
       out: { type: "string", short: "o" },
       actual: { type: "string" },
       period: { type: "string" },
+      from: { type: "string" },
+      "api-key": { type: "string" },
+      otel: { type: "string" },
+      "otel-only": { type: "boolean" },
       "all-projects": { type: "boolean" },
       reattribute: { type: "boolean" },
       "no-color": { type: "boolean" },
@@ -187,37 +197,76 @@ async function main(argv: string[]): Promise<number> {
     if (command === "scan") {
       if (!values.reattribute) {
         const t0 = Date.now();
-        const claude = collectClaudeCode({
-          since: since ?? undefined,
-          repoRoot,
-          onlyThisRepo: !values["all-projects"],
-          priceOpts: { overrides: cfg.prices },
-        });
-        const codex = collectCodex({
-          since: since ?? undefined,
-          repoRoot,
-          onlyThisRepo: !values["all-projects"],
-          priceOpts: { overrides: cfg.prices },
-        });
-        const sessions = [...claude.sessions, ...codex.sessions];
-        const stats = {
-          turns: claude.stats.turns + codex.stats.turns,
-          sessions: claude.stats.sessions + codex.stats.sessions,
-          files: claude.stats.files + codex.stats.files,
-          linesSkipped: claude.stats.linesSkipped + codex.stats.linesSkipped,
-        };
-        for (const s of sessions) store.putSession(s);
+        const otelOnly = Boolean(values["otel-only"]);
+        if (otelOnly && !values.otel) {
+          throw new Error("--otel-only requires --otel <path>");
+        }
+
+        let turns = 0;
+        let sessions = 0;
+        let files = 0;
+        let linesSkipped = 0;
+        let claudeTurns = 0;
+        let codexTurns = 0;
+        let otelTurns = 0;
+
+        if (!otelOnly) {
+          const claude = collectClaudeCode({
+            since: since ?? undefined,
+            repoRoot,
+            onlyThisRepo: !values["all-projects"],
+            priceOpts: { overrides: cfg.prices },
+          });
+          const codex = collectCodex({
+            since: since ?? undefined,
+            repoRoot,
+            onlyThisRepo: !values["all-projects"],
+            priceOpts: { overrides: cfg.prices },
+          });
+          for (const s of [...claude.sessions, ...codex.sessions]) {
+            store.putSession(s);
+          }
+          claudeTurns = claude.stats.turns;
+          codexTurns = codex.stats.turns;
+          turns += claude.stats.turns + codex.stats.turns;
+          sessions += claude.stats.sessions + codex.stats.sessions;
+          files += claude.stats.files + codex.stats.files;
+          linesSkipped +=
+            claude.stats.linesSkipped + codex.stats.linesSkipped;
+        }
+
+        if (values.otel) {
+          const otel = collectOtel({
+            input: values.otel,
+            since: since ?? undefined,
+            repoRoot,
+            priceOpts: { overrides: cfg.prices },
+          });
+          for (const s of otel.sessions) store.putSession(s);
+          otelTurns = otel.stats.turns;
+          turns += otel.stats.turns;
+          sessions += otel.stats.sessions;
+          files += otel.stats.files;
+        }
+
+        const parts = [
+          !otelOnly
+            ? `Claude Code: ${claudeTurns} turns; Codex: ${codexTurns} turns`
+            : null,
+          values.otel ? `OTel: ${otelTurns} turns` : null,
+        ].filter(Boolean);
+
         console.log(
-          `Ingested ${stats.turns} turns across ${stats.sessions} sessions ` +
-            `from ${stats.files} transcripts (${Date.now() - t0}ms)` +
-            `\n  Claude Code: ${claude.stats.turns} turns; Codex: ${codex.stats.turns} turns` +
-            (stats.linesSkipped
-              ? `\n  ${stats.linesSkipped} malformed lines skipped`
+          `Ingested ${turns} turns across ${sessions} sessions ` +
+            `from ${files} files (${Date.now() - t0}ms)` +
+            (parts.length ? `\n  ${parts.join("; ")}` : "") +
+            (linesSkipped
+              ? `\n  ${linesSkipped} malformed lines skipped`
               : ""),
         );
-        if (stats.sessions === 0) {
+        if (sessions === 0) {
           console.error(
-            "\nNo sessions matched this repo. Try --all-projects, or --repo <path>.",
+            "\nNo sessions matched. Try --all-projects, --otel <path>, or --repo <path>.",
           );
         }
       }
@@ -261,12 +310,37 @@ async function main(argv: string[]): Promise<number> {
 
     let invoiced: number | undefined;
     if (command === "reconcile") {
-      if (values.actual === undefined) {
-        throw new Error("reconcile needs --actual <usd> (the invoiced total)");
+      if (values.actual !== undefined && values.from) {
+        throw new Error("reconcile: use either --actual or --from, not both");
       }
-      invoiced = Number(values.actual.replace(/[$,]/g, ""));
-      if (!Number.isFinite(invoiced) || invoiced < 0) {
-        throw new Error(`--actual must be a non-negative number; got "${values.actual}"`);
+      if (values.actual !== undefined) {
+        invoiced = Number(values.actual.replace(/[$,]/g, ""));
+        if (!Number.isFinite(invoiced) || invoiced < 0) {
+          throw new Error(
+            `--actual must be a non-negative number; got "${values.actual}"`,
+          );
+        }
+      } else if (values.from) {
+        if (!values.period) {
+          throw new Error(
+            "reconcile --from requires --period <YYYY-MM> so the invoice window is defined",
+          );
+        }
+        const period = periodFromMonth(values.period);
+        const adapter = getBillingAdapter(values.from);
+        const invoice = await adapter.fetchInvoice(period, {
+          apiKey: values["api-key"],
+        });
+        invoiced = invoice.totalUsd;
+        console.error(
+          `Fetched ${invoice.provider} invoice: $${invoiced.toFixed(2)} ` +
+            `${invoice.currency} across ${invoice.buckets} day(s)` +
+            (period.label ? ` (${period.label})` : ""),
+        );
+      } else {
+        throw new Error(
+          "reconcile needs --actual <usd> or --from <provider> (e.g. anthropic)",
+        );
       }
       store.setMeta(invoiceKey(values.period), String(invoiced));
     } else {

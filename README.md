@@ -74,10 +74,25 @@ Nothing leaves your machine. Overhead reads Claude Code (`~/.claude/projects`) a
 Local transcripts give you *relative* attribution. Your invoice is the *absolute* truth, and they will differ — CI agents, other developers' machines, non-agent API traffic.
 
 ```bash
+# Manual: paste the number from the invoice
 overhead reconcile --actual 41203.55 --period 2026-07
+
+# Automatic: pull the month's total from Anthropic's Admin API
+export ANTHROPIC_ADMIN_API_KEY=sk-ant-admin01-…
+overhead reconcile --from anthropic --period 2026-07
 ```
 
 This reports `coverage` — what fraction of the real bill these transcripts explain. **Low coverage is reported loudly rather than hidden.** A confident number computed from 30% of the data is worse than no number.
+
+### Fleet-wide collection (OpenTelemetry)
+
+When agents run in CI or on other machines, point Claude Code's OTLP export at a collector that dumps JSON, then ingest:
+
+```bash
+overhead scan --otel /var/otel/claude-code --otel-only
+```
+
+OTLP log events (`api_request`, `tool_result`) and trace spans (`claude_code.llm_request`, `claude_code.tool`) are supported. Enable `OTEL_LOG_TOOL_DETAILS=1` on the agents so file paths reach the export — without them, cost lands in `(unattributed)`.
 
 ## How attribution works
 
@@ -151,8 +166,10 @@ Changing `lambda` or `window` doesn't require a re-scan — raw evidence is kept
 | Command | Does |
 |---|---|
 | `overhead scan` | Ingest transcripts, price turns, attribute cost |
+| `overhead scan --otel <path>` | Also (or only, with `--otel-only`) ingest OTLP JSON exports |
 | `overhead report` | Table output, grouped by `--by` |
-| `overhead reconcile --actual <usd>` | Compare modeled spend to the invoice |
+| `overhead reconcile --actual <usd>` | Compare modeled spend to a hand-entered invoice |
+| `overhead reconcile --from anthropic --period YYYY-MM` | Same, with the total pulled from the Admin API |
 | `overhead export --format json\|csv` | Machine-readable output |
 | `overhead html -o <file>` | Self-contained shareable report |
 | `overhead config init` | Starter config file |
@@ -165,7 +182,7 @@ Full design rationale, data model, and pipeline detail: [`ARCHITECTURE.md`](./AR
 
 ## Status
 
-v1 reads Claude Code and Codex transcripts. Planned: provider billing API adapters for automatic reconciliation, and OTel ingest for fleet-wide collection without touching individual machines.
+v1 reads Claude Code and Codex transcripts and supports manual invoice reconcile. v2 adds Anthropic Admin API billing adapters for automatic reconciliation, and OTel ingest for fleet-wide collection without touching individual machines.
 
 ## License
 
